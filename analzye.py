@@ -1,6 +1,7 @@
 import sys
 import urllib2
 import xml.etree.ElementTree as ET
+import re
 
 class GAV:
         group = ""
@@ -26,13 +27,14 @@ def getMavenMetaData(gav, baseUrl):
 		metadata = urllib2.urlopen(url).read()
 		root = ET.fromstring(metadata)
 		versioning = root.find('versioning')
-		release = versioning.find('release')
-		if release is None:
-			versions = versioning.find('versions').findall('version')
-			largest = findLargest(versions)
-			return largest
-		else: 
-			return release.text	
+	       	#latest = versioning.find('latest')
+		#if latest is None or not isUsable(latest.text):
+		versions = versioning.find('versions').findall('version')
+		print gav.group + ":" + gav.artifact
+		largest = findLargest(versions)
+		return largest
+		#else: 
+		#	return latest.text	
 	except urllib2.HTTPError, e:
 		#No Maven Meta data seeing if artifact exists
 		try:
@@ -58,15 +60,77 @@ def findLargest(versions):
 
 def isHigher(version, max):
 	#For not it seems last result is always the highest, but should not rely on this assumption
-	return 'true'
+	if(isUsable(version)):
+		versionSplit = getSplit(version)
+		maxSplit = getSplit(max)
+		if int(versionSplit[0]) > int(maxSplit[0]):
+			return 'true'
+		if int(maxSplit[0]) > int(versionSplit[0]):
+			return None
+		if int(versionSplit[1]) > int(maxSplit[1]):
+                        return 'true'
+                if int(maxSplit[1]) > int(versionSplit[1]):
+                        return None 
+		if len(versionSplit) > len(maxSplit):
+			return 'true'
+		if len(maxSplit) > len(versionSplit):
+			return None
+		if len(versionSplit) < 3 :
+			return postfix(version) > postfix(max)
+		if int(versionSplit[2]) > int(maxSplit[2]):
+                        return 'true'
+                if int(maxSplit[2]) > int(versionSplit[2]):
+                        return None
+		return postfix(version) > postfix(max)
+	return None
 
-f = open('tempFile', 'r')
+def postfix( version ):
+	postfix = re.sub('.*?([0-9]*)$',r'\1',version)
+	if postfix:
+		return int(postfix)
+	return 0 
+
+def getSplit(version):
+	versionList = list()
+	first = version.split('.', 1)
+	versionList.append(first[0])
+	if '.' in first[1]:
+		second = first[1].split('.', 1)
+	       	versionList.append(second[0])
+		incremental = strip(second[1])
+                if(incremental):
+			versionList.append(incremental)
+	else:
+		versionList.append(strip(first[1]))
+	print versionList
+	return versionList
+
+def strip( str ):
+	index = 0
+	for c in str:
+		if c.isdigit():
+			index+=1
+		else:
+			break
+	return str[:index]
+
+def isUsable( str ):
+	modified = str.replace('.', '')
+	end = str[str.rfind('.')+1:]
+	start = str[:str.find('.')]
+	if (end.isdigit() and int(end) > 100 ) or (start.isdigit() and int(start)> 100):
+		return None
+        return modified.isdigit() or str.lower().find('redhat') != -1 or str.lower().find('final') != -1 or str.lower().find('release') != -1 or re.search('[a-zA-Z]', str) is None
+
+
+f = open('real', 'r')
 w = open('output.csv', 'w')
 w.write('group,artifact,included version,latest maven central,latest red hat provided,latest fusesource provided\n')
 for line in f:
         gav = makeGAV(line[line.rfind(' ')+1:])
 	if sys.argv[1] not in gav.group:
 		line = gav.group + ',' + gav.artifact + ',' + gav.version
+		print line
 		line += ',' + getMavenMetaData(gav, 'http://central.maven.org/maven2/')
 		line += ',' + getMavenMetaData(gav, 'https://maven.repository.redhat.com/ga/')
 		line += ',' + getMavenMetaData(gav, 'https://repo.fusesource.com/nexus/content/groups/public/')
