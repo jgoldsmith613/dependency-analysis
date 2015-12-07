@@ -1,3 +1,4 @@
 tempFile
 *.csv*
 real
+*.pyc

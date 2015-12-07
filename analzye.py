@@ -2,21 +2,7 @@ import sys
 import urllib2
 import xml.etree.ElementTree as ET
 import re
-
-class GAV:
-        group = ""
-        artifact = ""
-        version = ""
-
-        def __init__(self, group, artifact, version):
-                self.group = group
-                self.artifact = artifact
-                self.version = version
-
-
-def makeGAV( str ):
-	list = str.split(':')
-	return GAV(list[0], list[1], list[3])
+import gav
 
 def getMavenMetaData(gav, baseUrl):
 	group = gav.group.replace('.', '/')
@@ -136,17 +122,17 @@ f = open('real', 'r')
 w = open('output.csv', 'w')
 w.write('group,artifact,included version,latest maven central,latest red hat provided,latest fusesource provided\n')
 for line in f:
-        gav = makeGAV(line[line.rfind(' ')+1:])
+        gavToProcess = gav.makeGAV(line[line.rfind(' ')+1:])
 	isSkipped = None
 	iterSkips = iter(sys.argv)
 	next(iterSkips)
 	for skip in iterSkips:
-		isSkipped = isSkipped or skip in gav.group
+		isSkipped = isSkipped or skip in gavToProcess.group
 	if not isSkipped:
-		line = gav.group + ',' + gav.artifact + ',' + gav.version
+		line = gavToProcess.group + ',' + gavToProcess.artifact + ',' + gavToProcess.version
 		print line
-		line += ',' + getMavenMetaData(gav, 'http://central.maven.org/maven2/')
-		line += ',' + getMavenMetaData(gav, 'https://maven.repository.redhat.com/ga/')
-		line += ',' + getMavenMetaData(gav, 'https://repo.fusesource.com/nexus/content/groups/public/')
+		line += ',' + getMavenMetaData(gavToProcess, 'http://central.maven.org/maven2/')
+		line += ',' + getMavenMetaData(gavToProcess, 'https://maven.repository.redhat.com/ga/')
+		line += ',' + getMavenMetaData(gavToProcess, 'https://repo.fusesource.com/nexus/content/groups/public/')
 		w.write(line + '\n')
 print "Done"
