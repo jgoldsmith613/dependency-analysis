@@ -67,6 +67,12 @@ def isHigher(version, max):
 			return 'true'
 		if int(maxSplit[0]) > int(versionSplit[0]):
 			return None
+		if(len(versionSplit) == 1 and len(maxSplit) ==1):
+			return postfix(version) > postfix(max)
+		if(len(versionSplit) == 1 and len(maxSplit) > 1):
+			return None
+		if(len(versionSplit) > 1 and len(maxSplit) == 1):
+			return 'true'
 		if int(versionSplit[1]) > int(maxSplit[1]):
                         return 'true'
                 if int(maxSplit[1]) > int(versionSplit[1]):
@@ -93,15 +99,18 @@ def postfix( version ):
 def getSplit(version):
 	versionList = list()
 	first = version.split('.', 1)
-	versionList.append(first[0])
-	if '.' in first[1]:
-		second = first[1].split('.', 1)
-	       	versionList.append(second[0])
-		incremental = strip(second[1])
-                if(incremental):
-			versionList.append(incremental)
-	else:
-		versionList.append(strip(first[1]))
+	versionList.append(strip(first[0]))
+	if len(first) > 1:
+		if '.' in first[1]:
+			second = first[1].split('.', 1)
+	       		versionList.append(second[0])
+			incremental = strip(second[1])
+                	if(incremental):
+				versionList.append(incremental)
+		else:
+			minor = strip(first[1])
+			if minor:
+				versionList.append(minor)
 	print versionList
 	return versionList
 
@@ -120,7 +129,7 @@ def isUsable( str ):
 	start = str[:str.find('.')]
 	if (end.isdigit() and int(end) > 100 ) or (start.isdigit() and int(start)> 100):
 		return None
-        return modified.isdigit() or str.lower().find('redhat') != -1 or str.lower().find('final') != -1 or str.lower().find('release') != -1 or re.search('[a-zA-Z]', str) is None
+        return modified.isdigit() or str.lower().find('redhat') != -1 or str.lower().endswith(('final','ga','release')) or re.search('[a-zA-Z]', str) is None
 
 
 f = open('real', 'r')
@@ -128,7 +137,12 @@ w = open('output.csv', 'w')
 w.write('group,artifact,included version,latest maven central,latest red hat provided,latest fusesource provided\n')
 for line in f:
         gav = makeGAV(line[line.rfind(' ')+1:])
-	if sys.argv[1] not in gav.group:
+	isSkipped = None
+	iterSkips = iter(sys.argv)
+	next(iterSkips)
+	for skip in iterSkips:
+		isSkipped = isSkipped or skip in gav.group
+	if not isSkipped:
 		line = gav.group + ',' + gav.artifact + ',' + gav.version
 		print line
 		line += ',' + getMavenMetaData(gav, 'http://central.maven.org/maven2/')
