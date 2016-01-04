@@ -120,7 +120,7 @@ def isUsable( str ):
 
 f = open('real', 'r')
 w = open('output.csv', 'w')
-w.write('group,artifact,included version,latest maven central,latest red hat provided,latest fusesource provided\n')
+w.write('group,artifact,included version,latest maven central,latest red hat provided\n')
 for line in f:
         gavToProcess = gav.makeGAV(line[line.rfind(' ')+1:])
 	isSkipped = None
@@ -133,6 +133,6 @@ for line in f:
 		print line
 		line += ',' + getMavenMetaData(gavToProcess, 'http://central.maven.org/maven2/')
 		line += ',' + getMavenMetaData(gavToProcess, 'https://maven.repository.redhat.com/ga/')
-		line += ',' + getMavenMetaData(gavToProcess, 'https://repo.fusesource.com/nexus/content/groups/public/')
+		line += ',' + getMavenMetaData(gavToProcess, 'https://repo.fusesource.com/nexus/content/groups/public/') 
 		w.write(line + '\n')
 print "Done"
